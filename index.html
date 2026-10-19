@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}/* おうちラボへ戻るボタン */
+.ouchi-home{display:inline-flex;align-items:center;gap:4px;flex:none;align-self:center;padding:3px 10px 3px 8px;border:2px solid currentColor;border-radius:999px;font:700 12px/1.4 "Zen Maru Gothic",sans-serif;letter-spacing:.04em;color:var(--muted,var(--ink-2,#5a687c));text-decoration:none;white-space:nowrap}
+.ouchi-home:hover{color:var(--ink,#1c2736)}
+.ouchi-home:focus-visible{outline:3px solid var(--accent,#2f6bd8);outline-offset:2px}
+.ouchi-home svg{width:15px;height:15px}
+header .ouchi-home{align-self:flex-start}
+</style>
+<title>分数・小数ラボ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@600&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* Layout: 方眼ノートの上に「式＝入力」カード → 図 → 手順、の1カラム。色は算数セットのタイル（青・黄・重なりの緑） */
+:root{
+  --paper:#f5f8fc; --grid:#e1e9f4; --card:#ffffff; --ink:#1c2a43; --muted:#5a6a83; --line:#a9b8cd;
+  --a:#2f6bd8; --a-soft:#d3e0f8; --b:#efb120; --b-soft:#fcebbd; --b-ink:#a86f00;
+  --mix:#2e9b68; --rem:#cf4b4b; --focus:#2f6bd8;
+  --ui:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif;
+  --num:"Klee One","Hiragino Mincho ProN","Yu Mincho",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#111927; --grid:#1a2537; --card:#172133; --ink:#e5ecf6; --muted:#97a7be; --line:#3b4b64;
+  --a:#6d9bf2; --a-soft:#22365c; --b:#f2c14e; --b-soft:#4a3b14; --b-ink:#f2c14e;
+  --mix:#4cc58c; --rem:#ec7a7a; --focus:#8fb4ff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#111927; --grid:#1a2537; --card:#172133; --ink:#e5ecf6; --muted:#97a7be; --line:#3b4b64;
+  --a:#6d9bf2; --a-soft:#22365c; --b:#f2c14e; --b-soft:#4a3b14; --b-ink:#f2c14e;
+  --mix:#4cc58c; --rem:#ec7a7a; --focus:#8fb4ff; color-scheme:dark}
+
+body{
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;
+  color:var(--ink); font-family:var(--ui); font-size:16px; line-height:1.7;
+}
+.wrap{max-width:860px;margin:0 auto;padding-block:24px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+h1{margin:0;font-weight:900;font-size:clamp(1.6rem,4.5vw,2.2rem);letter-spacing:.04em;line-height:1.2;text-wrap:balance}
+h1 .dot{color:var(--b-ink)}
+.sub{margin:0;color:var(--muted);font-size:.92rem}
+
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;background:var(--card);border:2px solid var(--ink);border-radius:12px;overflow:hidden}
+.seg button{font:inherit;font-weight:700;border:0;background:transparent;color:var(--ink);padding:8px 16px;cursor:pointer;min-width:52px}
+.seg button+button{border-left:2px solid var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.seg.ops button{font-family:var(--num);font-size:1.3rem;padding:4px 16px}
+.btn{font:inherit;font-weight:700;border:2px solid var(--ink);background:var(--card);color:var(--ink);border-radius:12px;padding:8px 14px;cursor:pointer}
+.btn:hover{background:var(--grid)}
+.btn.primary{background:var(--ink);color:var(--card)}
+.btn.primary:hover{opacity:.9}
+.btn:disabled{opacity:.35;cursor:default}
+button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.spacer{flex:1}
+
+/* 式カード */
+.eq{background:var(--card);border:2px solid var(--ink);border-radius:18px;padding:18px 12px;
+  display:flex;align-items:center;justify-content:center;gap:clamp(6px,2vw,18px);flex-wrap:wrap;
+  font-family:var(--num);box-shadow:4px 4px 0 var(--ink)}
+.opsym{font-size:2.2rem;line-height:1}
+.ans{font-size:2rem;min-width:2.2em;text-align:center;padding:2px 10px;border-radius:10px;background:var(--grid)}
+.ans.hidden{color:var(--muted)}
+.qa{color:var(--a)} .qb{color:var(--b-ink)}
+.fin{display:inline-grid;grid-template-columns:auto auto auto;align-items:center;gap:2px 6px}
+.fin .v{font-size:1.9rem;text-align:center;min-width:1.4em;line-height:1.15}
+.fin .bar{grid-column:2;height:3px;background:currentColor;border-radius:2px}
+.fin .v.den{border:0}
+.step-btn{font-family:var(--ui);font-weight:700;width:32px;height:32px;border-radius:50%;border:2px solid currentColor;background:transparent;color:inherit;cursor:pointer;font-size:1rem;line-height:1;padding:0}
+.step-btn:hover{background:var(--grid)}
+.din{display:inline-flex;flex-direction:column;align-items:center;gap:4px}
+.din .v{font-size:2rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.din .rowb{display:flex;gap:4px}
+.din .rowb button{width:auto;border-radius:8px;padding:0 6px;height:28px;font-size:.8rem}
+
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.1;margin:0 .12em;font-family:var(--num)}
+.fr>span:first-child{border-bottom:2px solid currentColor;padding:0 .18em}
+.mixed{display:inline-flex;align-items:center;gap:.05em;font-family:var(--num)}
+.ans .fr{font-size:1.6rem}
+
+/* 図カード */
+.viz{background:var(--card);border:2px solid var(--ink);border-radius:18px;padding:12px;overflow-x:auto}
+.viz svg{display:block;width:100%;height:auto;max-width:100%}
+.viz.fade svg{animation:fade .35s ease}
+@keyframes fade{from{opacity:.25}to{opacity:1}}
+.warn{padding:28px 12px;text-align:center;color:var(--rem);font-weight:700}
+
+/* 手順 */
+.steps{display:grid;grid-template-columns:1fr;gap:12px;background:var(--card);border:2px solid var(--ink);border-radius:18px;padding:16px 18px}
+.stephead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dots{display:flex;gap:6px}
+.dots button{width:30px;height:30px;border-radius:50%;border:2px solid var(--ink);background:var(--card);color:var(--ink);font:inherit;font-weight:700;font-size:.85rem;cursor:pointer;padding:0}
+.dots button[aria-current="step"]{background:var(--ink);color:var(--card)}
+.stepnav{display:flex;gap:8px;margin-left:auto}
+.steptext{font-size:1.08rem;line-height:1.95;max-width:62ch;min-width:0}
+.steptext .fr{font-size:1rem}
+.hint{font-size:.9rem;color:var(--muted)}
+
+.hissan{display:inline-grid;grid-template-columns:repeat(5,1.3em);font-family:var(--num);font-size:1.6rem;line-height:1.35;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px}
+.hissan .rule{grid-column:1/-1;border-top:2px solid var(--ink);margin:2px 0}
+.hissan .pt{color:var(--rem)}
+
+.point{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border:2px dashed var(--line);border-radius:14px;background:var(--card)}
+.point b{flex:none;font-size:.78rem;letter-spacing:.12em;background:var(--b);color:#2a1d00;padding:2px 8px;border-radius:6px;margin-top:3px}
+.point p{margin:0;max-width:62ch;min-width:0}
+footer{color:var(--muted);font-size:.82rem}
+
+/* SVG */
+.c0{fill:var(--card);stroke:var(--line);stroke-width:1}
+.ca{fill:var(--a);stroke:var(--card);stroke-width:1}
+.cas{fill:var(--a-soft);stroke:var(--line);stroke-width:1}
+.cb{fill:var(--b);stroke:var(--card);stroke-width:1}
+.cbs{fill:var(--b-soft);stroke:var(--line);stroke-width:1}
+.cmix{fill:var(--mix);stroke:var(--card);stroke-width:1}
+.crem{fill:url(#hatch);stroke:var(--line);stroke-width:1}
+.hbg{fill:var(--card)} .hl{stroke:var(--rem);stroke-width:2}
+.frame{fill:none;stroke:var(--ink);stroke-width:2.2}
+.bold{stroke:var(--ink);stroke-width:2.6}
+.colline{stroke:var(--ink);stroke-opacity:.4;stroke-width:1}
+.axis{stroke:var(--ink);stroke-width:2}
+.tick{stroke:var(--ink);stroke-width:1.2}
+.t{fill:var(--ink);font-family:var(--num)}
+.tm{fill:var(--muted);font-family:var(--ui)}
+.ta{fill:var(--a);font-family:var(--num)} .tb{fill:var(--b-ink);font-family:var(--num)} .tx{fill:var(--mix);font-family:var(--num)}
+.fl{stroke:var(--ink);stroke-width:2} .fla{stroke:var(--a);stroke-width:2} .flb{stroke:var(--b-ink);stroke-width:2}
+.la{stroke:var(--a);stroke-width:3;fill:none} .lb{stroke:var(--b-ink);stroke-width:3;fill:none}
+.arc{fill:none;stroke:var(--b-ink);stroke-width:2.5} .arc.part{stroke-dasharray:6 5}
+.brk{fill:none;stroke:var(--ink);stroke-width:1.6}
+.ovl{fill:none;stroke:var(--ink);stroke-width:3}
+@media (max-width:520px){.opsym{font-size:1.7rem}.fin .v,.din .v{font-size:1.6rem}.seg button{padding:8px 12px;min-width:44px}}
+@media (prefers-reduced-motion:reduce){.viz.fade svg{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <a class="ouchi-home" href="https://ouchi-lab.vercel.app/" aria-label="おうちラボへもどる"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg>おうちラボ</a>
+    <div>
+      <h1>分数<span class="dot">・</span>小数ラボ</h1>
+      <p class="sub">数を変えて「つぎへ」。図で見ると、計算のしくみがわかる。</p>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="seg" id="typeSeg" role="group" aria-label="数の種類">
+      <button id="t-frac" data-type="frac">分数</button>
+      <button id="t-dec" data-type="dec">小数</button>
+    </div>
+    <div class="seg ops" id="opSeg" role="group" aria-label="計算">
+      <button id="o-add" data-op="add" aria-label="たし算">＋</button>
+      <button id="o-sub" data-op="sub" aria-label="ひき算">−</button>
+      <button id="o-mul" data-op="mul" aria-label="かけ算">×</button>
+      <button id="o-div" data-op="div" aria-label="わり算">÷</button>
+    </div>
+    <span class="spacer"></span>
+    <button class="btn" id="rand">おまかせ問題</button>
+  </div>
+
+  <div class="eq" id="eq" aria-live="polite"></div>
+
+  <div class="viz" id="viz"></div>
+
+  <section class="steps" aria-label="手順">
+    <div class="stephead">
+      <div class="dots" id="dots"></div>
+      <div class="stepnav">
+        <button class="btn" id="prev">もどる</button>
+        <button class="btn primary" id="next">つぎへ</button>
+      </div>
+    </div>
+    <div class="steptext" id="stext"></div>
+  </section>
+
+  <div class="point"><b>ポイント</b><p id="point"></p></div>
+  <footer>数字の上下の ＋／− ボタンで問題を変えられます。分数は1以下、小数は 0.01〜2 の範囲（かけ算・わり算は0.1きざみ）。</footer>
+</div>
+
+<script>
+(function(){
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+const lcm=(a,b)=>a/gcd(a,b)*b;
+const simp=(n,d)=>{const g=gcd(n,d)||1;return[n/g,d/g]};
+const trim=s=>s.includes('.')?s.replace(/0+$/,'').replace(/\.$/,''):s;
+const fH=n=>trim((n/100).toFixed(2)); // hundredths -> string
+const fT=n=>trim((n/10).toFixed(1));  // tenths -> string
+const F=(n,d,c='')=>`<span class="fr ${c}"><span>${n}</span><span>${d}</span></span>`;
+function nice(n,d,c=''){ // simplified, mixed
+  if(n===0) return `<span class="${c}">0</span>`;
+  const[sn,sd]=simp(n,d);
+  if(sd===1) return `<span class="${c}">${sn}</span>`;
+  if(sn>sd){const w=Math.floor(sn/sd);return `<span class="mixed ${c}">${w}${F(sn-w*sd,sd)}</span>`}
+  return F(sn,sd,c);
+}
+function reduceText(n,d){
+  if(n===0) return '';
+  const[sn,sd]=simp(n,d);let s='';
+  if(sd!==d) s+=` 約分すると ${sd===1?sn:F(sn,sd)}。`;
+  if(sd!==1&&sn>sd){const w=Math.floor(sn/sd);s+=` 帯分数で書くと ${w}と${F(sn-w*sd,sd)}。`}
+  else if(sd===1&&sd!==d) s+='';
+  return s;
+}
+const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+
+// ---------- state ----------
+const S={type:'frac',op:'add',step:0,
+  f:{add:[[1,2],[1,3]],sub:[[3,4],[1,3]],mul:[[2,3],[3,4]],div:[[3,4],[3,8]]},
+  d:{add:[35,48],sub:[125,48],mul:[12,3],div:[12,4]}};
+const MAXD=()=>S.op==='mul'?10:8;
+const DLIM={add:[[1,200],[1,200]],sub:[[1,200],[1,200]],mul:[[1,20],[1,20]],div:[[1,30],[1,20]]};
+const OPSYM={add:'＋',sub:'−',mul:'×',div:'÷'};
+try{const v=JSON.parse(localStorage.getItem('bslab')||'null');if(v&&v.type&&v.op){S.type=v.type;S.op=v.op}}catch(e){}
+
+// ---------- svg helpers ----------
+function sf(x,y,n,d,cls='t',size=20){
+  const w=Math.max(String(n).length,String(d).length)*size*0.62+10;
+  const lc=cls==='ta'?'fla':cls==='tb'?'flb':'fl';
+  return `<text x="${x}" y="${y-6}" class="${cls}" font-size="${size}" text-anchor="middle">${n}</text>`+
+    `<line x1="${x-w/2}" x2="${x+w/2}" y1="${y}" y2="${y}" class="${lc}"/>`+
+    `<text x="${x}" y="${y+size+2}" class="${cls}" font-size="${size}" text-anchor="middle">${d}</text>`;
+}
+function bar(x,y,w,h,parts,fn,bold=0){
+  let s='';const pw=w/parts;
+  for(let i=0;i<parts;i++) s+=`<rect x="${(x+i*pw).toFixed(2)}" y="${y}" width="${pw.toFixed(2)}" height="${h}" class="${fn(i)}"/>`;
+  if(bold&&bold!==parts){for(let k=1;k<bold;k++){const bx=(x+k*w/bold).toFixed(2);s+=`<line x1="${bx}" x2="${bx}" y1="${y-4}" y2="${y+h+4}" class="bold"/>`}}
+  return s+`<rect x="${x}" y="${y}" width="${w}" height="${h}" class="frame"/>`;
+}
+const defs=`<defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" class="hbg"/><line x1="0" y1="0" x2="0" y2="8" class="hl"/></pattern></defs>`;
+const svg=(h,body,w=640)=>`<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="計算の図">${defs}${body}</svg>`;
+const T=(x,y,txt,cls='t',size=18,anchor='middle')=>`<text x="${x}" y="${y}" class="${cls}" font-size="${size}" text-anchor="${anchor}">${txt}</text>`;
+
+// ---------- 分数 たし算・ひき算 ----------
+function fracAS(a,b,c,d,isSub){
+  const L=lcm(b,d),A=a*L/b,B=c*L/d;
+  if(isSub&&A<B) return{warn:'ひかれる数のほうが小さいので、このままでは ひけません。「おまかせ問題」か 数を変えてみよう。'};
+  const X=110,W=470;
+  const two=(useL)=>{
+    const pa=useL?L:b,pb=useL?L:d,na=useL?A:a,nb=useL?B:c;
+    return sf(55,58,na,pa,'ta',22)+bar(X,32,W,46,pa,i=>i<na?'ca':'c0',useL?b:0)+T(X+W+22,62,'1','tm',16)+
+           sf(55,148,nb,pb,'tb',22)+bar(X,122,W,46,pb,i=>i<nb?'cb':'c0',useL?d:0)+T(X+W+22,152,'1','tm',16);
+  };
+  const steps=[];
+  steps.push({t:`${F(a,b,'qa')} は 1を <b>${b}等分</b>した ${a}こ分。${F(c,d,'qb')} は 1を <b>${d}等分</b>した ${c}こ分。`,svg:svg(200,two(false))});
+  if(b!==d) steps.push({t:`分母がちがうと、1こ分の大きさがちがうので そのままでは数えられない。どちらも <b>${L}等分</b>に切りなおすと ${F(A,L,'qa')} と ${F(B,L,'qb')}（これが <b>通分</b>）。太い線がもとの切れ目。`,svg:svg(200,two(true))});
+  else steps.push({t:`分母が同じなので、1こ分（${F(1,L)}）の大きさは同じ。このまま数えられる。`,svg:svg(200,two(true))});
+  const tot=isSub?A:A+B,rows=Math.max(1,Math.ceil(tot/L));
+  let body='';
+  for(let r=0;r<rows;r++){
+    const y=32+r*72;
+    body+=bar(X,y,W,46,L,i=>{const g=r*L+i;
+      if(isSub) return g<A-B?'ca':g<A?'crem':'c0';
+      return g<A?'ca':g<A+B?'cb':'c0'})+T(X+W+22,y+30,r===0?'1':'2','tm',16);
+  }
+  const R=isSub?A-B:A+B;
+  body+=sf(55,32+rows*72/2+4,R,L,'tx',22);
+  const t=isSub
+    ? `${F(1,L)} が ${A}こ から ${B}こ とりのぞくと、のこりは ${A}−${B}=${R}こ。だから ${F(R,L)}。${reduceText(R,L)}`
+    : `${F(1,L)} が ${A}+${B}=${R}こ あつまって ${F(R,L)}。${R>L?'1をこえたので、2本目のテープにつづく。':''}${reduceText(R,L)}`;
+  steps.push({t,svg:svg(rows*72+40,body)});
+  return{steps,ans:nice(R,L),
+    point:isSub?'分母は「1を何等分したか」。分母がちがうと1こ分の大きさがちがうので、同じ大きさに切りそろえてから「とりのぞく」。分子だけひけばいいのは、そろったあとだけ。'
+               :'分母は「1を何等分したか」。分母がちがうと1こ分の大きさがちがうので、同じ大きさに切りそろえて（通分して）から数える。分母どうしは たさない！'};
+}
+
+// ---------- 分数 かけ算 ----------
+function fracMul(a,b,c,d){
+  const Q=270,X=240,Y=72;
+  const draw=(st)=>{
+    let s='';const cw=Q/b,rh=Q/d,rows=st===0?1:d,h=Q/rows;
+    for(let i=0;i<b;i++)for(let j=0;j<rows;j++){
+      let cl;
+      if(st===0) cl=i<a?'cas':'c0';
+      else cl=i<a&&j<c?'cmix':i<a?'cas':j<c?'cbs':'c0';
+      s+=`<rect x="${(X+i*cw).toFixed(2)}" y="${(Y+j*h).toFixed(2)}" width="${cw.toFixed(2)}" height="${h.toFixed(2)}" class="${cl}"/>`;
+    }
+    s+=`<rect x="${X}" y="${Y}" width="${Q}" height="${Q}" class="frame"/>`;
+    s+=`<path d="M${X} ${Y-12} H${X+a*cw}" class="la"/>`+sf(X+a*cw/2,Y-40,a,b,'ta',18);
+    s+=T(X+Q+20,Y+Q/2+6,'1','tm',16)+T(X+Q/2,Y+Q+26,'1','tm',16);
+    if(st>0){s+=`<path d="M${X-12} ${Y} V${Y+c*rh}" class="lb"/>`+sf(X-46,Y+c*rh/2+2,c,d,'tb',18)}
+    if(st===2){s+=`<rect x="${X}" y="${Y}" width="${a*cw}" height="${c*rh}" class="ovl"/>`}
+    return s;
+  };
+  const steps=[
+    {t:`1（正方形）を たてに <b>${b}等分</b>して ${a}こ分をぬる。これが ${F(a,b,'qa')}。`,svg:svg(380,draw(0))},
+    {t:`「${F(a,b,'qa')} の ${F(c,d,'qb')} こ分」を考える。よこに <b>${d}等分</b>して ${c}だん分をとると、重なったところ（みどり）が答え。`,svg:svg(380,draw(1))},
+    {t:`正方形は ${b}×${d}=<b>${b*d}こ</b>に分かれていて、みどりは ${a}×${c}=<b>${a*c}こ</b>。だから ${F(a*c,b*d)}。分子どうし・分母どうしを かけたのと同じになる。${reduceText(a*c,b*d)}`,svg:svg(380,draw(2))}
+  ];
+  return{steps,ans:nice(a*c,b*d),point:'「×分数」は「その○分の△こ分」。1より小さい数をかけると、もとより小さくなる。たて×よこの面積で考えると、分子どうし・分母どうしをかける理由が見える。'};
+}
+
+// ---------- 分数 わり算 ----------
+function fracDiv(a,b,c,d){
+  const L=lcm(b,d),p=a*L/b,q=c*L/d,X=110,W=470;
+  const two=(useL)=>{
+    const pa=useL?L:b,pb=useL?L:d,na=useL?p:a,nb=useL?q:c;
+    return sf(55,58,na,pa,'ta',22)+bar(X,32,W,46,pa,i=>i<na?'ca':'c0',useL?b:0)+T(X+W+22,62,'1','tm',16)+
+           sf(55,148,nb,pb,'tb',22)+bar(X,122,W,46,pb,i=>i<nb?'cb':'c0',useL?d:0)+T(X+W+22,152,'1','tm',16);
+  };
+  const steps=[];
+  steps.push({t:`${F(a,b,'qa')} の中に ${F(c,d,'qb')} が <b>いくつ分</b> 入るかな？`,svg:svg(200,two(false))});
+  steps.push({t:b===d?`どちらも ${F(1,L)} が いくつ分かで数える：${p}こ と ${q}こ。`:`同じ大きさ（${F(1,L)}）に切りそろえると、${F(a,b,'qa')} は ${p}こ、${F(c,d,'qb')} は ${q}こ。`,svg:svg(200,two(true))});
+  // grouping
+  const pw=W/L;let body=bar(X,32,W,46,L,i=>i<p?(Math.floor(i/q)%2===0?'ca':'cas'):'c0',b);
+  body+=sf(55,58,p,L,'ta',22)+T(X+W+22,62,'1','tm',16);
+  const ng=Math.ceil(p/q);
+  for(let g=0;g<ng;g++){
+    const s0=g*q,e0=Math.min(p,(g+1)*q),x1=X+s0*pw+2,x2=X+e0*pw-2,y=86;
+    body+=`<path d="M${x1} ${y} v8 H${x2} v-8" class="brk"/>`;
+    const full=e0-s0===q;
+    body+=full?T((x1+x2)/2,y+28,g+1,'t',17):sf((x1+x2)/2,y+28,e0-s0,q,'t',14);
+  }
+  body+=bar(X,150,q*pw,30,q,()=> 'cb')+T(X+q*pw+10,171,`← ${F_txt(c,d)} のものさし（${q}こ）`,'tm',14,'start');
+  const ans=nice(p,q);
+  const t=(p>=q?`${p}こ の中に ${q}こ のまとまりが ${p}÷${q} → ${F(p,q)} こ分 入る。`:`${q}こ のまとまり1つには足りない。まとまりの ${F(p,q)} こ分。`)+reduceText(p,q)+
+    `<br><span class="hint">「ひっくり返してかける」と ${F(a,b)}×${F(d,c)}=${F(a*d,b*c)}。同じ答えになるのは、切りそろえて数をくらべていることと同じだから。</span>`;
+  steps.push({t,svg:svg(200,body)});
+  return{steps,ans,point:'「÷分数」は「いくつ分 入るか」。同じ大きさに切りそろえれば、ただの整数のわり算になる。1より小さい数でわると、答えはもとより大きくなる。'};
+}
+function F_txt(n,d){return `${n}/${d}`}
+
+// ---------- 小数 たし算・ひき算 ----------
+function hissan(N,M,op,R){
+  const row=(h,sym)=>{const s=(h/100).toFixed(2),[i,f]=s.split('.');const show2=f[1]!=='0',show1=show2||f[0]!=='0';
+    return `<span>${sym}</span><span>${i}</span><span class="pt">${show1?'.':''}</span><span>${show1?f[0]:''}</span><span>${show2?f[1]:''}</span>`};
+  return `<div class="hissan" aria-label="筆算">${row(N,'')}${row(M,op)}<span class="rule"></span>${row(R,'')}</div>`;
+}
+function decAS(N,M,isSub){
+  if(isSub&&N<M) return{warn:'ひかれる数のほうが小さいので、このままでは ひけません。数を変えてみよう。'};
+  const tot=isSub?N:N+M,G=Math.max(1,Math.ceil(tot/100)),cs=12,gw=120,gap=20,width=G*gw+(G-1)*gap,X=(640-width)/2,Y=20;
+  const grid=(fn)=>{let s='';
+    for(let g=0;g<G;g++){const gx=X+g*(gw+gap);
+      for(let k=0;k<100;k++){const i=g*100+k,col=Math.floor(k/10),row=k%10;
+        s+=`<rect x="${gx+col*cs}" y="${Y+row*cs}" width="${cs}" height="${cs}" class="${fn(i)}"/>`}
+      for(let c=1;c<10;c++) s+=`<line x1="${gx+c*cs}" x2="${gx+c*cs}" y1="${Y}" y2="${Y+gw}" class="colline"/>`;
+      s+=`<rect x="${gx}" y="${Y}" width="${gw}" height="${gw}" class="frame"/>`+T(gx+gw/2,Y+gw+22,G>1?`${g+1}つめの 1`:'1','tm',14);
+    }
+    // legend
+    const ly=Y+gw+44;
+    s+=`<rect x="${X}" y="${ly}" width="${cs}" height="${cs}" class="cas"/>`+T(X+cs+6,ly+11,'= 0.01','t',15,'start');
+    s+=`<rect x="${X+90}" y="${ly-4}" width="${cs}" height="${cs*2}" class="cas"/>`+T(X+90+cs+6,ly+11,'たて1列(10ます) = 0.1','t',15,'start');
+    return s;};
+  const H=Y+gw+70;
+  const steps=[{t:`小さいます1つが <b>0.01</b>、たて1列（10ます）が <b>0.1</b>、ぜんぶ（100ます）で <b>1</b>。<span class="qa">${fH(N)}</span> は 0.01 が ${N}こ分。`,svg:svg(H,grid(i=>i<N?'ca':'c0'))}];
+  const R=isSub?N-M:N+M;
+  if(!isSub){
+    steps.push({t:`<span class="qb">${fH(M)}</span> は 0.01 が ${M}こ分。つづけてぬる。`,svg:svg(H,grid(i=>i<N?'ca':i<N+M?'cb':'c0'))});
+    steps.push({t:`あわせて ${N}+${M}=${R}こ → 0.01 が ${R}こで <b>${fH(R)}</b>。${R>100?'100ますをこえた分は、次の1にうつる（くり上がり）。':''}<br>小数点をそろえて同じ位どうしを たすのは、同じ大きさのますどうしを 数えるため。${hissan(N,M,'+',R)}`,svg:svg(H,grid(i=>i<N?'ca':i<N+M?'cb':'c0'))});
+  }else{
+    steps.push({t:`<span class="qb">${fH(M)}</span>（0.01 が ${M}こ）を うしろから とりのぞく。`,svg:svg(H,grid(i=>i<N-M?'ca':i<N?'crem':'c0'))});
+    steps.push({t:`のこりは ${N}−${M}=${R}こ → <b>${fH(R)}</b>。小数点をそろえるのは、同じ大きさのますどうしを ひくため。${hissan(N,M,'−',R)}`,svg:svg(H,grid(i=>i<N-M?'ca':i<N?'crem':'c0'))});
+  }
+  return{steps,ans:fH(R),point:'小数は「0.1や0.01が いくつ分」。小数点（位）をそろえるのは、同じ大きさのものどうしを 計算するため。0.25+0.3 で 0.28 にしてしまう まちがいは、ちがう大きさを たしている。'};
+}
+
+// ---------- 小数 かけ算 ----------
+function decMul(a,b){
+  const ux=Math.max(1,Math.ceil(a/10)),uy=Math.max(1,Math.ceil(b/10)),cs=13,w=ux*130,h=uy*130,X=(640-w)/2+20,Y=56;
+  const draw=(st)=>{let s='';
+    for(let i=0;i<ux*10;i++)for(let j=0;j<uy*10;j++){
+      const cl=st>0&&i<a&&j<b?'cmix':'c0';
+      s+=`<rect x="${X+i*cs}" y="${Y+j*cs}" width="${cs}" height="${cs}" class="${cl}"/>`}
+    for(let u=0;u<ux;u++)for(let v=0;v<uy;v++){s+=`<rect x="${X+u*130}" y="${Y+v*130}" width="130" height="130" class="frame"/>`;
+      if(st===0) s+=T(X+u*130+65,Y+v*130+78,'1','tm',40)}
+    if(st===0){s+=`<rect x="${X}" y="${Y}" width="${cs}" height="${cs}" class="cas"/>`+`<path d="M${X+cs} ${Y+cs/2} H${X+w+18}" class="brk"/>`+T(X+w+22,Y+cs/2+5,'0.01','t',16,'start')}
+    if(st>0){
+      s+=`<path d="M${X} ${Y-12} H${X+a*cs}" class="la"/>`+T(X+a*cs/2,Y-20,fT(a),'ta',20);
+      s+=`<path d="M${X-12} ${Y} V${Y+b*cs}" class="lb"/>`+T(X-18,Y+b*cs/2+7,fT(b),'tb',20,'end');
+      s+=`<rect x="${X}" y="${Y}" width="${a*cs}" height="${b*cs}" class="ovl"/>`;
+    }
+    return s;};
+  const H=Y+h+24,R=a*b;
+  const smaller=a<10&&b<10?'<br><span class="hint">1より小さい数どうしをかけると、答えはどちらよりも小さくなる。</span>':b<10?'<br><span class="hint">1より小さい数をかけると、答えはもとの数より小さくなる。</span>':'';
+  const steps=[
+    {t:'1辺が1の正方形の面積は <b>1</b>。それを 10×10 に分けた 小さいます1つは 0.1×0.1 = <b>0.01</b>。',svg:svg(H,draw(0))},
+    {t:`よこ <span class="qa">${fT(a)}</span>、たて <span class="qb">${fT(b)}</span> の長方形をぬる。この面積が ${fT(a)}×${fT(b)} の答え。`,svg:svg(H,draw(1))},
+    {t:`よこに ${a}ます、たてに ${b}ます → ${a}×${b}=<b>${R}ます</b>。1ますは0.01 だから 答えは <b>${fH(R)}</b>。<br>小数点の右のけた数は 1+1=2けた。だから ${R} の小数点を 左に2つうごかす。${smaller}`,svg:svg(H,draw(2))}
+  ];
+  return{steps,ans:fH(R),point:'0.1×0.1 は小さいます1つ（0.01）。整数としてかけてから、0.01がいくつ分かを考える。これが「小数点の右のけた数をたしてうごかす」ルールのひみつ。'};
+}
+
+// ---------- 小数 わり算 ----------
+function decDiv(a,b){
+  const U=Math.max(1,Math.ceil(Math.max(a,b)/10)),W=560,X=40,px=W/(U*10),Y=160;
+  const exact=(a*100)%b===0,q=Math.floor(a/b),r=a-q*b;
+  const base=()=>{let s=`<line x1="${X}" x2="${X+W}" y1="${Y}" y2="${Y}" class="axis"/>`;
+    for(let t=0;t<=U*10;t++){const x=X+t*px,big=t%10===0,mid=t%5===0;
+      s+=`<line x1="${x}" x2="${x}" y1="${Y-(big?10:mid?7:4)}" y2="${Y+(big?10:mid?7:4)}" class="tick"/>`;
+      if(big) s+=T(x,Y+32,t/10,'t',18)}
+    s+=`<rect x="${X}" y="${Y+40}" width="${a*px}" height="14" class="ca"/>`+T(X+a*px,Y+72,fT(a),'ta',18);
+    s+=`<rect x="${X}" y="22" width="${b*px}" height="12" class="cb"/>`+T(X+b*px+8,33,`${fT(b)} の長さ`,'tm',14,'start');
+    return s;};
+  const jumps=()=>{let s='',k=0;
+    while(k*b<a){const s0=k*b,e0=Math.min(a,(k+1)*b),x1=X+s0*px,x2=X+e0*px,hh=Math.min(80,(x2-x1)*0.55+18),part=e0-s0<b;
+      s+=`<path d="M${x1} ${Y} Q${(x1+x2)/2} ${Y-hh*2} ${x2} ${Y}" class="arc${part?' part':''}"/>`;
+      if((x2-x1)>14||k<9) s+=T((x1+x2)/2,Y-hh-6,part?'…':k+1,'tb',(x2-x1)>22?15:11);
+      k++}
+    return s;};
+  const H=Y+86;
+  let ans,t2;
+  if(exact){ans=fH(a*100/b);t2=r===0?`ちょうど <b>${q}回</b> とべた。`:`${q}回 とんで、のこりが ${fT(r)}。これは ${fT(b)} の ${fH(r*100/b)} こ分。`}
+  else{ans=`${q} あまり ${fT(r)}`;t2=`${q}回 とんで、${fT(r)} あまる。`}
+  const steps=[
+    {t:`${'<span class="qa">'+fT(a)+'</span>'} の中に ${'<span class="qb">'+fT(b)+'</span>'} が <b>いくつ分</b> 入るかな？`,svg:svg(H,base())},
+    {t:`${fT(b)} ずつ とんでいくと… ${t2}`,svg:svg(H,base()+jumps())},
+    {t:`0.1 が ${a}こ ÷ 0.1 が ${b}こ と考えると、${a}÷${b} の整数のわり算と同じ → <b>${ans}</b>。${!exact?`<br><span class="hint">わり進めると ${trim((a/b).toFixed(3))}… になる。あまりの小数点は、もとの数の小数点の位置にそろえる。</span>`:''}${b<10?'<br><span class="hint">わる数が1より小さいので、答えはもとの数より大きくなる。</span>':''}`,svg:svg(H,base()+jumps())}
+  ];
+  return{steps,ans,point:'「÷小数」は「いくつ分 入るか」。0.1がいくつ分かに直せば整数のわり算。わる数とわられる数の小数点を同じだけうごかしても答えが変わらないのは、このため。'};
+}
+
+// ---------- build ----------
+function build(){
+  const op=S.op;
+  if(S.type==='frac'){const[[a,b],[c,d]]=S.f[op];
+    return op==='add'?fracAS(a,b,c,d,false):op==='sub'?fracAS(a,b,c,d,true):op==='mul'?fracMul(a,b,c,d):fracDiv(a,b,c,d)}
+  const[x,y]=S.d[op];
+  return op==='add'?decAS(x,y,false):op==='sub'?decAS(x,y,true):op==='mul'?decMul(x,y):decDiv(x,y);
+}
+
+// ---------- inputs ----------
+function fracInput(k,cls){const[n,d]=S.f[S.op][k];
+  return `<div class="fin ${cls}">
+    <button class="step-btn" data-k="${k}" data-act="n-" aria-label="分子をへらす">−</button><span class="v">${n}</span><button class="step-btn" data-k="${k}" data-act="n+" aria-label="分子をふやす">＋</button>
+    <span class="bar"></span>
+    <button class="step-btn" data-k="${k}" data-act="d-" aria-label="分母をへらす" style="grid-row:3;grid-column:1">−</button><span class="v den" style="grid-row:3;grid-column:2">${d}</span><button class="step-btn" data-k="${k}" data-act="d+" aria-label="分母をふやす" style="grid-row:3;grid-column:3">＋</button>
+  </div>`}
+function decInput(k,cls){const v=S.d[S.op][k],hund=S.op==='add'||S.op==='sub';
+  const txt=hund?fH(v):fT(v);
+  const small=hund?`<button class="step-btn" data-k="${k}" data-act="-1">−0.01</button>`:'';
+  const smallp=hund?`<button class="step-btn" data-k="${k}" data-act="+1">＋0.01</button>`:'';
+  const big=hund?10:1;
+  return `<div class="din ${cls}"><div class="rowb"><button class="step-btn" data-k="${k}" data-act="+${big}">＋0.1</button>${smallp}</div><span class="v">${txt}</span><div class="rowb"><button class="step-btn" data-k="${k}" data-act="-${big}">−0.1</button>${small}</div></div>`}
+
+function adjust(k,act){
+  if(S.type==='frac'){const f=S.f[S.op][k];let[n,d]=f;const md=MAXD();
+    if(act==='n+')n=Math.min(d,n+1);if(act==='n-')n=Math.max(1,n-1);
+    if(act==='d+')d=Math.min(md,d+1);if(act==='d-'){d=Math.max(2,d-1);n=Math.min(n,d)}
+    S.f[S.op][k]=[n,d];
+  }else{const[lo,hi]=DLIM[S.op][k];S.d[S.op][k]=Math.min(hi,Math.max(lo,S.d[S.op][k]+parseInt(act,10)))}
+  S.step=0;render(true);
+}
+function randomize(){
+  const op=S.op;
+  if(S.type==='frac'){
+    if(op==='mul'){const b=ri(2,6),d=ri(2,6);S.f.mul=[[ri(1,b-1),b],[ri(1,d-1),d]]}
+    else if(op==='div'){let b,d;do{b=ri(2,8);d=ri(2,8)}while(lcm(b,d)>24);S.f.div=[[ri(1,b),b],[ri(1,d),d]]}
+    else{let b,d,A,B;
+      do{b=ri(2,8);d=ri(2,8);A=[ri(1,b-1),b];B=[ri(1,d-1),d];
+        if(op==='sub'&&A[0]*d<B[0]*b){const t=A;A=B;B=t}}
+      while(lcm(b,d)>24||(op==='sub'&&A[0]*B[1]===B[0]*A[1]));
+      S.f[op]=[A,B]}
+  }else{
+    if(op==='add'){S.d.add=Math.random()<.4?[ri(1,15)*10,ri(5,95)]:[ri(3,150),ri(3,150)]}
+    else if(op==='sub'){let N=ri(30,200),M=ri(5,N-1);S.d.sub=[N,M]}
+    else if(op==='mul')S.d.mul=[ri(2,20),ri(2,12)];
+    else{const b=ri(2,9),k=ri(2,Math.max(2,Math.floor(30/b)));S.d.div=[Math.random()<.7?Math.min(30,b*k):ri(b+1,30),b]}
+  }
+  S.step=0;render(true);
+}
+
+// ---------- render ----------
+let cur=null;
+function render(fade){
+  try{localStorage.setItem('bslab',JSON.stringify({type:S.type,op:S.op}))}catch(e){}
+  document.querySelectorAll('#typeSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.type===S.type));
+  document.querySelectorAll('#opSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.op===S.op));
+  cur=build();
+  const last=cur.steps?cur.steps.length-1:0;
+  if(S.step>last)S.step=last;
+  const done=!cur.warn&&S.step===last;
+  const inA=S.type==='frac'?fracInput(0,'qa'):decInput(0,'qa'),inB=S.type==='frac'?fracInput(1,'qb'):decInput(1,'qb');
+  document.getElementById('eq').innerHTML=`${inA}<span class="opsym">${OPSYM[S.op]}</span>${inB}<span class="opsym">＝</span><span class="ans${done?'':' hidden'}">${done?cur.ans:'？'}</span>`;
+  const viz=document.getElementById('viz');
+  if(cur.warn){viz.innerHTML=`<div class="warn">${cur.warn}</div>`;document.getElementById('dots').innerHTML='';document.getElementById('stext').innerHTML='';
+    document.getElementById('prev').disabled=true;document.getElementById('next').disabled=true;document.getElementById('point').textContent=cur.point||'';return}
+  viz.innerHTML=cur.steps[S.step].svg;
+  if(fade){viz.classList.remove('fade');void viz.offsetWidth;viz.classList.add('fade')}
+  document.getElementById('dots').innerHTML=cur.steps.map((s,i)=>`<button data-step="${i}" ${i===S.step?'aria-current="step"':''} aria-label="手順${i+1}">${i+1}</button>`).join('');
+  document.getElementById('stext').innerHTML=cur.steps[S.step].t;
+  document.getElementById('prev').disabled=S.step===0;
+  const nx=document.getElementById('next');nx.disabled=false;nx.textContent=S.step===last?'もう一回':'つぎへ';
+  document.getElementById('point').textContent=cur.point;
+}
+document.getElementById('typeSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.type=b.dataset.type;S.step=0;render(true)});
+document.getElementById('opSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.op=b.dataset.op;S.step=0;
+  if(S.type==='frac'){const md=MAXD();S.f[S.op]=S.f[S.op].map(([n,d])=>[Math.min(n,Math.min(d,md)),Math.min(d,md)])}render(true)});
+document.getElementById('eq').addEventListener('click',e=>{const b=e.target.closest('button[data-act]');if(b)adjust(+b.dataset.k,b.dataset.act)});
+document.getElementById('dots').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.step=+b.dataset.step;render(true)});
+document.getElementById('prev').addEventListener('click',()=>{if(S.step>0){S.step--;render(true)}});
+document.getElementById('next').addEventListener('click',()=>{const last=cur.steps.length-1;S.step=S.step<last?S.step+1:0;render(true)});
+document.getElementById('rand').addEventListener('click',randomize);
+document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea'))return;
+  if(e.key==='ArrowRight')document.getElementById('next').click();if(e.key==='ArrowLeft')document.getElementById('prev').click()});
+render(false);
+})();
+</script>
+</body>
+</html>
